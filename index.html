@@ -1,0 +1,876 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="color-scheme" content="dark">
+<title>Riff</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%230d1117'/%3E%3Ctext x='32' y='47' font-family='monospace' font-size='40' fill='%2358a6ff' text-anchor='middle'%3Er%3C/text%3E%3C/svg%3E">
+<style>
+  :root {
+    --bg: #0d1117;
+    --bar: #161b22;
+    --line: #21262d;
+    --fg: #e6edf3;
+    --dim: #7d8590;
+    --faint: #484f58;
+    --accent: #58a6ff;
+    --err: #ff7b72;
+    --warn: #d29922;
+    --sel: #264f78;
+    --mono: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, "DejaVu Sans Mono", monospace;
+  }
+
+  * { box-sizing: border-box; }
+
+  html, body {
+    height: 100%;
+    margin: 0;
+    overflow: hidden;
+  }
+
+  body {
+    display: flex;
+    flex-direction: column;
+    background: var(--bg);
+    color: var(--fg);
+    font-family: var(--mono);
+    font-size: 13px;
+    line-height: 20px;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  /* ---------- header ---------- */
+
+  #bar {
+    flex: 0 0 auto;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    height: 30px;
+    padding: 0 6px 0 10px;
+    background: var(--bar);
+    border-bottom: 1px solid var(--line);
+    font-size: 11px;
+    user-select: none;
+  }
+
+  #bar .brand {
+    color: var(--dim);
+    font-weight: 600;
+    letter-spacing: .08em;
+    text-transform: uppercase;
+  }
+
+  #bar .hint {
+    color: var(--faint);
+    letter-spacing: .02em;
+  }
+
+  #bar .grow { flex: 1 1 auto; }
+
+  #bar button {
+    font: inherit;
+    color: var(--dim);
+    background: transparent;
+    border: 1px solid transparent;
+    border-radius: 4px;
+    padding: 2px 8px;
+    cursor: pointer;
+    line-height: 16px;
+  }
+
+  #bar button:hover {
+    color: var(--fg);
+    background: #21262d;
+  }
+
+  #bar button:active {
+    background: #30363d;
+  }
+
+  #bar #run {
+    color: var(--fg);
+    border-color: var(--line);
+  }
+
+  #bar #run:hover {
+    border-color: #30363d;
+    background: #1f6feb;
+    border-color: #1f6feb;
+    color: #fff;
+  }
+
+  /* ---------- editor ---------- */
+
+  #editor {
+    position: relative;
+    flex: 0 0 60%;
+    min-height: 60px;
+    overflow: hidden;
+    background: var(--bg);
+  }
+
+  #editor > pre,
+  #editor > textarea {
+    position: absolute;
+    inset: 0;
+    margin: 0;
+    padding: 10px 12px 48px;
+    font: inherit;
+    line-height: 20px;
+    tab-size: 2;
+    white-space: pre;
+    word-wrap: normal;
+    overflow: auto;
+  }
+
+  #hl {
+    z-index: 2;
+    pointer-events: none;
+    overflow: hidden;
+    color: var(--fg);
+  }
+
+  #code {
+    z-index: 1;
+    color: transparent;
+    background: transparent;
+    caret-color: var(--fg);
+    border: 0;
+    outline: none;
+    resize: none;
+  }
+
+  #code::selection { background: var(--sel); }
+
+  #code::-webkit-scrollbar,
+  #console::-webkit-scrollbar {
+    width: 10px;
+    height: 10px;
+  }
+
+  #code::-webkit-scrollbar-thumb,
+  #console::-webkit-scrollbar-thumb {
+    background: #30363d;
+    border-radius: 5px;
+    border: 2px solid transparent;
+    background-clip: content-box;
+  }
+
+  #code::-webkit-scrollbar-track,
+  #console::-webkit-scrollbar-track { background: transparent; }
+
+  #code::-webkit-scrollbar-corner { background: transparent; }
+
+  /* ---------- tokens ---------- */
+
+  .t-k { color: #ff7b72; }
+  .t-s { color: #a5d6ff; }
+  .t-n { color: #79c0ff; }
+  .t-l { color: #79c0ff; }
+  .t-f { color: #d2a8ff; }
+  .t-c { color: #7d8590; font-style: italic; }
+
+  /* ---------- splitter ---------- */
+
+  #gutter {
+    flex: 0 0 5px;
+    cursor: row-resize;
+    background: var(--line);
+  }
+
+  #gutter:hover,
+  body.dragging #gutter { background: #388bfd; }
+
+  body.dragging { cursor: row-resize; user-select: none; }
+
+  /* ---------- console ---------- */
+
+  #console {
+    flex: 1 1 auto;
+    min-height: 40px;
+    overflow: auto;
+    padding: 4px 0 10px;
+    background: #0a0d12;
+    font-size: 12.5px;
+    line-height: 18px;
+  }
+
+  .line {
+    padding: 1px 12px 1px 10px;
+    border-left: 2px solid transparent;
+    white-space: pre-wrap;
+    overflow-wrap: anywhere;
+    color: #c9d1d9;
+  }
+
+  .line.info { color: var(--dim); }
+
+  .line.warn {
+    color: var(--warn);
+    background: rgba(210, 153, 34, .07);
+    border-left-color: rgba(210, 153, 34, .55);
+  }
+
+  .line.error {
+    color: var(--err);
+    background: rgba(255, 123, 114, .06);
+    border-left-color: rgba(255, 123, 114, .55);
+  }
+
+  #out:empty::before {
+    content: "ctrl + enter — run";
+    display: block;
+    padding: 1px 12px;
+    color: #30363d;
+  }
+
+  /* ---------- sandbox ---------- */
+
+  #sandbox {
+    position: fixed;
+    left: 0;
+    bottom: 0;
+    width: 1px;
+    height: 1px;
+    opacity: .01;
+    border: 0;
+    pointer-events: none;
+  }
+</style>
+</head>
+<body>
+
+<header id="bar">
+  <span class="brand">riff</span>
+  <span class="hint">ctrl + enter</span>
+  <span class="grow"></span>
+  <button id="run" title="Run (Ctrl+Enter)">run</button>
+  <button id="clear" title="Clear console">clear</button>
+</header>
+
+<div id="editor">
+  <textarea id="code" spellcheck="false" autocomplete="off" autocapitalize="off" autocorrect="off" wrap="off" aria-label="code"></textarea>
+  <pre id="hl" aria-hidden="true"></pre>
+</div>
+
+<div id="gutter" title="drag to resize"></div>
+
+<main id="console"><div id="out"></div></main>
+
+<iframe id="sandbox" sandbox="allow-scripts" title="run sandbox"></iframe>
+
+<script>
+/* =====================================================================
+   Riff — a two-pane JS scratchpad: editor + console.
+   Code runs in a fresh sandboxed iframe on every run, so each run gets
+   a clean event loop (no timers leaking between runs).
+   ===================================================================== */
+
+/* Runs inside the sandboxed iframe. Must stay self-contained:
+   the function is serialized with toString() and injected into srcdoc. */
+function childMain() {
+  'use strict';
+
+  var send = function (level, text) {
+    try {
+      window.parent.postMessage({ drill: 1, kind: 'log', level: level, text: String(text) }, '*');
+    } catch (e) { /* ignore */ }
+  };
+
+  var clear = function () {
+    try { window.parent.postMessage({ drill: 1, kind: 'clear' }, '*'); } catch (e) { /* ignore */ }
+  };
+
+  /* User code is evaluated inside a one-line async wrapper, so engine line
+     numbers are shifted by one. Frames are rewritten to "your-code:L:C". */
+  var userLines = 0;
+
+  function errorText(err) {
+    var name = (err && err.name) || 'Error';
+    var message = (err && err.message) || '';
+    var head = message ? name + ': ' + message : name;
+    var stack = err && err.stack ? String(err.stack) : '';
+    var frames = [];
+
+    stack.split('\n').forEach(function (raw) {
+      var line = raw.trim();
+      if (line.indexOf('at ') !== 0) return;
+      line = line.replace(/eval at .*?\), /, '');
+      if (line.indexOf('about:srcdoc') !== -1) return;
+      line = line.replace(/<anonymous>/g, 'your-code');
+
+      var found = /your-code:(\d+):(\d+)/.exec(line);
+      if (!found) return;
+
+      var number = Number(found[1]) - 1;
+      if (number < 1 || (userLines && number > userLines)) return;
+
+      var position = 'your-code:' + number + ':' + found[2];
+      var named = /^at (.+?) \(/.exec(line);
+      var label = named ? named[1] : '';
+
+      if (!label || label === 'eval' || label === 'anonymous' || label === 'new AsyncFunction') {
+        frames.push('    at ' + position);
+      } else {
+        frames.push('    at ' + label + ' (' + position + ')');
+      }
+    });
+
+    var unique = frames.filter(function (frame, index) {
+      return frames.indexOf(frame) === index;
+    }).slice(0, 4);
+
+    return unique.length ? head + '\n' + unique.join('\n') : head;
+  }
+
+  function anyText(value) {
+    if (value && typeof value === 'object' && value.stack && value.message) return errorText(value);
+    return inspect(value, 0, []);
+  }
+
+  function inspect(value, depth, seen) {
+    var type = typeof value;
+
+    if (value === null) return 'null';
+    if (type === 'undefined') return 'undefined';
+    if (type === 'string') return depth === 0 ? value : JSON.stringify(value);
+    if (type === 'number') return Object.is(value, -0) ? '-0' : String(value);
+    if (type === 'bigint') return String(value) + 'n';
+    if (type === 'boolean') return String(value);
+    if (type === 'symbol') return String(value);
+    if (type === 'function') return 'ƒ ' + (value.name || 'anonymous') + '()';
+    if (value instanceof Error) return errorText(value);
+
+    if (seen.indexOf(value) !== -1) return '[Circular]';
+    if (depth > 3) return Array.isArray(value) ? '[Array]' : '[Object]';
+
+    var next = seen.concat([value]);
+
+    try {
+      if (Array.isArray(value)) {
+        var items = [];
+        var limit = Math.min(value.length, 40);
+        for (var i = 0; i < limit; i++) {
+          items.push(i in value ? inspect(value[i], depth + 1, next) : '<empty>');
+        }
+        if (value.length > limit) items.push('… ' + (value.length - limit) + ' more');
+        return '[' + (items.length ? ' ' + items.join(', ') + ' ' : '') + ']';
+      }
+
+      if (value instanceof Date) {
+        return isNaN(value.getTime()) ? 'Invalid Date' : value.toISOString();
+      }
+
+      if (value instanceof RegExp) return String(value);
+
+      if (value instanceof Map) {
+        var pairs = [];
+        value.forEach(function (v, k) {
+          if (pairs.length < 20) pairs.push(inspect(k, depth + 1, next) + ' => ' + inspect(v, depth + 1, next));
+        });
+        return 'Map(' + value.size + ') {' + (pairs.length ? ' ' + pairs.join(', ') + ' ' : '') + '}';
+      }
+
+      if (value instanceof Set) {
+        var members = [];
+        value.forEach(function (v) {
+          if (members.length < 20) members.push(inspect(v, depth + 1, next));
+        });
+        return 'Set(' + value.size + ') {' + (members.length ? ' ' + members.join(', ') + ' ' : '') + '}';
+      }
+
+      if (typeof ArrayBuffer !== 'undefined' && ArrayBuffer.isView && ArrayBuffer.isView(value)) {
+        var ctorName = (value.constructor && value.constructor.name) || 'TypedArray';
+        return ctorName + '(' + value.length + ') [ ' + Array.prototype.join.call(value, ', ') + ' ]';
+      }
+
+      if (value.nodeType === 1) {
+        return '<' + String(value.nodeName).toLowerCase() + '>';
+      }
+
+      var tag = '';
+      try {
+        var proto = Object.getPrototypeOf(value);
+        var ctor = proto && proto.constructor;
+        if (ctor && ctor.name && ctor.name !== 'Object') tag = ctor.name + ' ';
+      } catch (e) { /* ignore */ }
+
+      var keys = Object.keys(value);
+      var shown = keys.slice(0, 20).map(function (key) {
+        var rendered;
+        try {
+          rendered = inspect(value[key], depth + 1, next);
+        } catch (e) {
+          rendered = '[getter threw]';
+        }
+        var label = /^[A-Za-z_$][\w$]*$/.test(key) ? key : JSON.stringify(key);
+        return label + ': ' + rendered;
+      });
+      if (keys.length > 20) shown.push('… ' + (keys.length - 20) + ' more');
+
+      return tag + '{' + (shown.length ? ' ' + shown.join(', ') + ' ' : '') + '}';
+    } catch (e) {
+      try { return String(value); } catch (e2) { return '[unprintable]'; }
+    }
+  }
+
+  function formatArgs(args) {
+    var parts = [];
+    for (var i = 0; i < args.length; i++) {
+      parts.push(typeof args[i] === 'string' ? args[i] : inspect(args[i], 0, []));
+    }
+    return parts.join(' ');
+  }
+
+  var levels = {
+    log: 'log',
+    info: 'info',
+    warn: 'warn',
+    error: 'error',
+    debug: 'log',
+    dir: 'log',
+    table: 'log'
+  };
+
+  Object.keys(levels).forEach(function (method) {
+    console[method] = function () {
+      send(levels[method], formatArgs(arguments));
+    };
+  });
+
+  console.clear = clear;
+
+  window.addEventListener('error', function (event) {
+    send('error', event && event.error ? errorText(event.error) : String(event.message));
+  });
+
+  window.addEventListener('unhandledrejection', function (event) {
+    send('error', 'Uncaught (in promise) ' + anyText(event.reason));
+  });
+
+  var started = false;
+
+  window.addEventListener('message', function (event) {
+    var data = event.data;
+    if (!data || data.drill !== 'code' || started) return;
+    started = true;
+
+    userLines = String(data.code).split('\n').length;
+
+    var task;
+
+    try {
+      task = (0, eval)('(async () => {\n' + data.code + '\n})')();
+    } catch (error) {
+      send('error', errorText(error));
+      return;
+    }
+
+    Promise.resolve(task).catch(function (error) {
+      send('error', anyText(error));
+    });
+  });
+
+  window.parent.postMessage({ drill: 1, kind: 'ready', token: window.__drillToken }, '*');
+}
+
+(function () {
+  'use strict';
+
+  var codeEl = document.getElementById('code');
+  var hlEl = document.getElementById('hl');
+  var outEl = document.getElementById('out');
+  var consoleEl = document.getElementById('console');
+  var editorEl = document.getElementById('editor');
+  var sandboxEl = document.getElementById('sandbox');
+  var runButton = document.getElementById('run');
+  var clearButton = document.getElementById('clear');
+
+  var K_CODE = 'riff.code';
+  var K_SPLIT = 'riff.split';
+
+  var SAMPLE = [
+    "const syncStock = async () => {",
+    "  console.log('stock: start');",
+    "  await null;",
+    "  console.log('stock: half');",
+    "  await null;",
+    "  console.log('stock: done');",
+    "};",
+    "",
+    "setTimeout(() => console.log('timer'), 0);",
+    "syncStock();",
+    "Promise.resolve().then(() => console.log('micro'));",
+    "console.log('main');"
+  ].join('\n');
+
+  var store = {
+    get: function (key) {
+      try { return localStorage.getItem(key); } catch (e) { return null; }
+    },
+    set: function (key, value) {
+      try { localStorage.setItem(key, value); } catch (e) { /* ignore */ }
+    }
+  };
+
+  /* One-time migration from the keys used before the project was named Riff. */
+  [['riff.code', 'jsdrill.code'], ['riff.split', 'jsdrill.split']].forEach(function (pair) {
+    try {
+      var legacy = localStorage.getItem(pair[1]);
+      if (localStorage.getItem(pair[0]) === null && legacy !== null) {
+        localStorage.setItem(pair[0], legacy);
+      }
+    } catch (e) { /* ignore */ }
+  });
+
+  /* ---------------- syntax highlighting ---------------- */
+
+  var KEYWORDS = new Set((
+    'await async break case catch class const continue debugger default delete do else ' +
+    'export extends finally for from function get if import in instanceof let new of ' +
+    'return set static super switch this throw try typeof var void while with yield'
+  ).split(' '));
+
+  var LITERALS = new Set('true false null undefined NaN Infinity'.split(' '));
+
+  function escapeHtml(text) {
+    return text.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+  }
+
+  function span(cls, text) {
+    return '<span class="t-' + cls + '">' + escapeHtml(text) + '</span>';
+  }
+
+  function highlight(source) {
+    var out = '';
+    var i = 0;
+    var length = source.length;
+
+    while (i < length) {
+      var ch = source[i];
+      var end;
+      var word;
+
+      if (ch === '/' && source[i + 1] === '/') {
+        end = source.indexOf('\n', i);
+        if (end < 0) end = length;
+        out += span('c', source.slice(i, end));
+        i = end;
+        continue;
+      }
+
+      if (ch === '/' && source[i + 1] === '*') {
+        end = source.indexOf('*/', i + 2);
+        end = end < 0 ? length : end + 2;
+        out += span('c', source.slice(i, end));
+        i = end;
+        continue;
+      }
+
+      if (ch === '"' || ch === "'" || ch === '`') {
+        end = i + 1;
+        while (end < length) {
+          if (source[end] === '\\') { end += 2; continue; }
+          if (source[end] === ch) { end += 1; break; }
+          if (ch !== '`' && source[end] === '\n') break;
+          end += 1;
+        }
+        out += span('s', source.slice(i, end));
+        i = end;
+        continue;
+      }
+
+      if (ch >= '0' && ch <= '9' && !/[\w$]/.test(source[i - 1] || '')) {
+        word = /^[0-9][\w.]*/.exec(source.slice(i, i + 32))[0];
+        out += span('n', word);
+        i += word.length;
+        continue;
+      }
+
+      if (/[A-Za-z_$]/.test(ch)) {
+        word = /^[A-Za-z_$][\w$]*/.exec(source.slice(i, i + 96))[0];
+        if (KEYWORDS.has(word)) out += span('k', word);
+        else if (LITERALS.has(word)) out += span('l', word);
+        else if (/^\s*\(/.test(source.slice(i + word.length, i + word.length + 8))) out += span('f', word);
+        else out += escapeHtml(word);
+        i += word.length;
+        continue;
+      }
+
+      out += escapeHtml(ch);
+      i += 1;
+    }
+
+    return out;
+  }
+
+  function paint() {
+    hlEl.innerHTML = highlight(codeEl.value);
+    syncScroll();
+  }
+
+  function syncScroll() {
+    hlEl.scrollTop = codeEl.scrollTop;
+    hlEl.scrollLeft = codeEl.scrollLeft;
+  }
+
+  /* ---------------- console ---------------- */
+
+  function addLine(level, text) {
+    var line = document.createElement('div');
+    line.className = 'line ' + (level || 'log');
+    line.textContent = text;
+    outEl.appendChild(line);
+    consoleEl.scrollTop = consoleEl.scrollHeight;
+  }
+
+  function clearConsole() {
+    outEl.textContent = '';
+  }
+
+  /* ---------------- run ---------------- */
+
+  var pendingCode = null;
+  var runToken = 0;
+  var accepting = true;
+
+  function bootSandbox() {
+    var open = '<scr' + 'ipt>';
+    var close = '</scr' + 'ipt>';
+    sandboxEl.srcdoc = '<!doctype html><meta charset="utf-8">' +
+      open + 'window.__drillToken=' + runToken + ';' + close +
+      open + '(' + childMain.toString() + ')();' + close;
+  }
+
+  function run() {
+    var code = codeEl.value;
+
+    store.set(K_CODE, code);
+    clearConsole();
+    accepting = false;
+
+    runToken += 1;
+    pendingCode = code;
+    bootSandbox();
+  }
+
+  window.addEventListener('message', function (event) {
+    if (event.source !== sandboxEl.contentWindow) return;
+
+    var data = event.data;
+    if (!data || data.drill !== 1) return;
+
+    if (data.kind === 'ready') {
+      if (data.token !== runToken || pendingCode === null) return;
+      sandboxEl.contentWindow.postMessage({ drill: 'code', code: pendingCode }, '*');
+      pendingCode = null;
+      accepting = true;
+      return;
+    }
+
+    if (!accepting) return;
+
+    if (data.kind === 'clear') {
+      clearConsole();
+      return;
+    }
+
+    if (data.kind === 'log') {
+      addLine(data.level, data.text);
+    }
+  });
+
+  /* ---------------- editor helpers ---------------- */
+
+  function insertText(text) {
+    codeEl.focus();
+    var inserted = false;
+    try { inserted = document.execCommand('insertText', false, text); } catch (e) { inserted = false; }
+    if (!inserted) {
+      var start = codeEl.selectionStart;
+      var end = codeEl.selectionEnd;
+      codeEl.setRangeText(text, start, end, 'end');
+    }
+    paint();
+  }
+
+  function lineBounds() {
+    var value = codeEl.value;
+    var start = codeEl.selectionStart;
+    var end = codeEl.selectionEnd;
+
+    if (start !== end) {
+      if (value[end - 1] === '\n') end -= 1;
+    } else {
+      end = start;
+    }
+
+    var from = value.lastIndexOf('\n', start - 1) + 1;
+    var to = value.indexOf('\n', end);
+    if (to < 0) to = value.length;
+
+    return { from: from, to: to, start: start, end: end };
+  }
+
+  function toggleComment() {
+    var value = codeEl.value;
+    var bounds = lineBounds();
+    var block = value.slice(bounds.from, bounds.to);
+    var lines = block.split('\n');
+    var filled = lines.filter(function (line) { return line.trim() !== ''; });
+
+    if (!filled.length) return;
+
+    var commented = filled.every(function (line) { return /^\s*\/\//.test(line); });
+
+    var next = lines.map(function (line) {
+      if (line.trim() === '') return line;
+      if (commented) return line.replace(/^(\s*)\/\/ ?/, '$1');
+      var indent = /^\s*/.exec(line)[0];
+      return indent + '// ' + line.slice(indent.length);
+    }).join('\n');
+
+    codeEl.setSelectionRange(bounds.from, bounds.to);
+    insertText(next);
+    codeEl.setSelectionRange(bounds.from, bounds.from + next.length);
+  }
+
+  function indentSelection(outdent) {
+    var value = codeEl.value;
+    var bounds = lineBounds();
+    var block = value.slice(bounds.from, bounds.to);
+
+    if (bounds.start === bounds.end && !block.includes('\n')) {
+      if (outdent) {
+        var head = value.slice(bounds.from, bounds.start);
+        var strip = /^ {1,2}/.exec(head);
+        if (!strip) return;
+        codeEl.setSelectionRange(bounds.start - strip[0].length, bounds.start);
+        insertText('');
+        return;
+      }
+      insertText('  ');
+      return;
+    }
+
+    var next = block.split('\n').map(function (line) {
+      if (outdent) return line.replace(/^ {1,2}/, '');
+      return line === '' ? line : '  ' + line;
+    }).join('\n');
+
+    var caret = bounds.start + 2;
+    codeEl.setSelectionRange(bounds.from, bounds.to);
+    insertText(next);
+    codeEl.setSelectionRange(Math.max(bounds.from, caret), Math.max(bounds.from, caret) + (bounds.end - bounds.start) + (next.length - block.length));
+  }
+
+  function newline() {
+    var value = codeEl.value;
+    var start = codeEl.selectionStart;
+    var end = codeEl.selectionEnd;
+
+    if (start !== end) { insertText('\n'); return; }
+
+    var lineStart = value.lastIndexOf('\n', start - 1) + 1;
+    var before = value.slice(lineStart, start);
+    var indent = /^[ \t]*/.exec(before)[0];
+    var after = value[start] || '';
+    var opens = /[{\[(]\s*$/.test(before) || /=>\s*$/.test(before);
+
+    if (opens && (after === '}' || after === ']' || after === ')')) {
+      var caret = start + 1 + indent.length + 2;
+      insertText('\n' + indent + '  ' + '\n' + indent);
+      codeEl.setSelectionRange(caret, caret);
+      return;
+    }
+
+    insertText('\n' + indent + (opens ? '  ' : ''));
+  }
+
+  /* ---------------- events ---------------- */
+
+  codeEl.addEventListener('input', function () {
+    paint();
+    store.set(K_CODE, codeEl.value);
+  });
+
+  codeEl.addEventListener('scroll', syncScroll);
+
+  codeEl.addEventListener('keydown', function (event) {
+    var mod = event.ctrlKey || event.metaKey;
+
+    if (mod && (event.key === 'Enter' || event.code === 'NumpadEnter')) {
+      event.preventDefault();
+      run();
+      return;
+    }
+
+    if (mod && (event.key === '/' || event.code === 'Slash')) {
+      event.preventDefault();
+      toggleComment();
+      return;
+    }
+
+    if (event.key === 'Tab') {
+      event.preventDefault();
+      indentSelection(event.shiftKey);
+      return;
+    }
+
+    if (event.key === 'Enter' && !event.shiftKey) {
+      event.preventDefault();
+      newline();
+    }
+  });
+
+  window.addEventListener('keydown', function (event) {
+    if ((event.ctrlKey || event.metaKey) && event.key === 'Enter') {
+      event.preventDefault();
+      run();
+    }
+  });
+
+  runButton.addEventListener('click', run);
+  clearButton.addEventListener('click', clearConsole);
+
+  /* ---------------- splitter ---------------- */
+
+  var drag = null;
+
+  document.getElementById('gutter').addEventListener('mousedown', function (event) {
+    event.preventDefault();
+    drag = { y: event.clientY, height: editorEl.getBoundingClientRect().height };
+    document.body.classList.add('dragging');
+  });
+
+  window.addEventListener('mousemove', function (event) {
+    if (!drag) return;
+    var max = window.innerHeight - 90;
+    var height = Math.max(60, Math.min(max, drag.height + event.clientY - drag.y));
+    editorEl.style.flex = '0 0 ' + height + 'px';
+  });
+
+  window.addEventListener('mouseup', function () {
+    if (!drag) return;
+    drag = null;
+    document.body.classList.remove('dragging');
+    store.set(K_SPLIT, String(editorEl.getBoundingClientRect().height));
+  });
+
+  /* ---------------- init ---------------- */
+
+  var savedCode = store.get(K_CODE);
+  codeEl.value = savedCode === null ? SAMPLE : savedCode;
+
+  var savedSplit = parseInt(store.get(K_SPLIT) || '', 10);
+  if (savedSplit > 40 && savedSplit < window.innerHeight - 80) {
+    editorEl.style.flex = '0 0 ' + savedSplit + 'px';
+  }
+
+  paint();
+})();
+</script>
+</body>
+</html>

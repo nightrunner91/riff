@@ -1,0 +1,13 @@
+[Desktop Entry]
+Type=Application
+Version=1.0
+Name=Riff
+GenericName=JavaScript scratchpad
+Comment=A pocket-sized JavaScript console
+Exec=/home/nikita/Projects/riff/run.sh
+Icon=/home/nikita/Projects/riff/assets/icon.svg
+Terminal=false
+Categories=Development;IDE;
+Keywords=javascript;playground;console;sandbox;
+StartupNotify=false
+StartupWMClass=riff
