@@ -8,8 +8,9 @@
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%230d1117'/%3E%3Ctext x='32' y='47' font-family='monospace' font-size='40' fill='%2358a6ff' text-anchor='middle'%3Er%3C/text%3E%3C/svg%3E">
 <style>
   :root {
-    --bg: #1c1c1f;
-    --panel: #323237;
+    --bg: #101318;
+    --console-bg: #12161B;
+    --panel: #1A1D23;
     --panel-hi: #3d3d43;
     --line: #3b3b42;
     --fg: #e8e8ee;
@@ -65,9 +66,9 @@
     font-weight: 600;
     letter-spacing: .02em;
     height: 32px;
-    padding: 0 18px;
+    padding: 0 12px;
     border: 1px solid transparent;
-    border-radius: 8px;
+    border-radius: 4px;
     cursor: pointer;
     transition: background .12s, border-color .12s, color .12s;
   }
@@ -237,7 +238,7 @@
     min-height: 40px;
     overflow: auto;
     padding: 4px 0 10px;
-    background: var(--bg);
+    background: var(--console-bg);
     font-size: 12.5px;
     line-height: 18px;
   }
@@ -317,7 +318,7 @@
 
   .card .btn {
     height: 29px;
-    padding: 0 14px;
+    padding: 0 10px;
     font-size: 12px;
   }
 
@@ -352,7 +353,7 @@
 
 <div id="toolbar">
   <button id="run" class="btn accent" title="Run (Ctrl+Enter)">Run</button>
-  <button id="clear" class="btn ghost" title="Clear editor and console">Clear</button>
+  <button id="clear" class="btn ghost" title="Reset editor and console">Reset</button>
   <span class="grow"></span>
   <span class="tip">Tip: <kbd>Ctrl</kbd> + <kbd>Enter</kbd> also runs</span>
 </div>
@@ -363,11 +364,11 @@
 
 <div id="modal" hidden>
   <div class="card" role="dialog" aria-modal="true" aria-labelledby="modal-title">
-    <h2 id="modal-title">Clear everything?</h2>
+    <h2 id="modal-title">Reset everything?</h2>
     <p>The editor and the console will both be wiped. This cannot be undone.</p>
     <div class="actions">
       <button id="cancel" class="btn ghost">Cancel</button>
-      <button id="confirm" class="btn accent danger">Clear</button>
+      <button id="confirm" class="btn accent danger">Reset</button>
     </div>
   </div>
 </div>
